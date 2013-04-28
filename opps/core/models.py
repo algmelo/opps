@@ -91,6 +91,111 @@ class Slugged(models.Model):
         abstract = True
 
 
+class Imaged(models.Model):
+
+    main_image = models.ForeignKey(
+        'images.Image',
+        null=True, blank=False,
+        on_delete=models.SET_NULL,
+        verbose_name=_(u'Main Image'),
+    )
+    images = models.ManyToManyField(
+        'images.Image',
+        null=True, blank=True,
+        through='core.ContainerImage',
+    )
+
+    class Meta:
+        abstract = True
+
+    def all_images(self):
+        imgs = [i for i in self.images.filter(
+            published=True, date_available__lte=timezone.now())]
+
+        return list(set(imgs))
+
+    def get_thumb(self):
+        return self.main_image
+
+
+class Container(Publishable, Slugged):
+    title = models.CharField(_(u"Title"), max_length=140, db_index=True)
+    channel = models.ForeignKey(
+        'channels.Channel',
+        verbose_name=_(u"Channel"),
+    )
+    channel_name = models.CharField(
+        _(u"Channel name"),
+        max_length=140,
+        null=True, blank=False,
+        db_index=True,
+    )
+    channel_long_slug = models.CharField(
+        _(u"Channel long slug"),
+        max_length=250,
+        null=True, blank=False,
+        db_index=True,
+    )
+    child_class = models.CharField(
+        _(u'Child class'),
+        max_length=30,
+        null=True, blank=False,
+        db_index=True
+    )
+
+    class Meta:
+        ordering = ['-date_available']
+        unique_together = ("site", "channel")
+
+    def save(self, *args, **kwargs):
+        self.channel_name = self.channel.name
+        self.channel_long_slug = self.channel.long_slug
+        self.child_class = self.__class__.__name__
+        super(Container, self).save(*args, **kwargs)
+
+    @property
+    def search_category(self):
+        """for use in search result"""
+        return _(self.child_class)
+
+
+class ContainerThrough(models.Model):
+    container = models.ForeignKey(
+        'core.Container',
+        verbose_name=_(u'Container'),
+        null=True, blank=True,
+        on_delete=models.SET_NULL
+    )
+    order = models.PositiveIntegerField(_(u'Order'), default=0)
+
+    class Meta:
+        abstract = True
+
+
+class ContainerImage(ContainerThrough):
+    image = models.ForeignKey(
+        'images.Image',
+        verbose_name=_(u'Image'),
+        null=True, blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    def __unicode__(self):
+        return self.image.title
+
+
+class ContainerSource(ContainerThrough):
+    source = models.ForeignKey(
+        'sources.Source',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_(u'Source'),
+    )
+
+    def __unicode__(self):
+        return self.source.slug
+
+
 class BaseBox(Publishable):
     name = models.CharField(_(u"Box name"), max_length=140)
     slug = models.SlugField(
@@ -99,10 +204,10 @@ class BaseBox(Publishable):
         max_length=150,
         unique=True,
     )
-    article = models.ForeignKey(
-        'articles.Article',
+    container = models.ForeignKey(
+        'core.Container',
         null=True, blank=True,
-        help_text=_(u'Only published article'),
+        help_text=_(u'Only published container'),
         on_delete=models.SET_NULL
     )
     channel = models.ForeignKey(
@@ -116,6 +221,56 @@ class BaseBox(Publishable):
 
     def __unicode__(self):
         return u"{0}-{1}".format(self.slug, self.site.name)
+
+
+class ContainerBox(BaseBox):
+
+    content = models.ManyToManyField(
+        'core.Container',
+        null=True, blank=True,
+        related_name='containerbox_containers',
+        through='core.ContainerBoxContainers'
+    )
+    queryset = models.ForeignKey(
+        'boxes.QuerySet',
+        null=True, blank=True,
+        verbose_name=_(u'Query Set')
+    )
+
+    def get_queryset(self):
+        _app, _model = self.queryset.model.split('.')
+        model = models.get_model(_app, _model)
+
+        queryset = model.objects.filter(published=True,
+                                        date_available__lte=timezone.now())
+        if self.queryset.channel:
+            queryset = queryset.filter(channel=self.queryset.channel)
+        queryset = queryset.order_by('{0}id'.format(self.queryset.order))[
+            :self.queryset.limit]
+
+        return queryset
+
+
+class ContainerBoxContainers(ContainerThrough):
+    articlebox = models.ForeignKey(
+        'core.ContainerBox',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='containerboxcontainers_containerboxs',
+        verbose_name=_(u'Container Box'),
+    )
+
+    def __unicode__(self):
+        return u"{0}-{1}".format(self.articlebox.slug, self.article.slug)
+
+    def clean(self):
+
+        if not self.article.published:
+            raise ValidationError(_(u'Article not published!'))
+
+        if self.article.date_available >= timezone.now():
+            raise ValidationError(_(u'Article date available is greater than '
+                                    u'today!'))
 
 
 class BaseConfig(Publishable):
@@ -157,10 +312,10 @@ class BaseConfig(Publishable):
     value = models.TextField(_(u"Config Value"))
     description = models.TextField(_(u"Description"), blank=True, null=True)
 
-    article = models.ForeignKey(
-        'articles.Article',
+    container = models.ForeignKey(
+        'core.Container',
         null=True, blank=True,
-        help_text=_(u'Only published article'),
+        help_text=_(u'Only published container'),
         on_delete=models.SET_NULL
     )
     channel = models.ForeignKey(
@@ -172,7 +327,7 @@ class BaseConfig(Publishable):
     class Meta:
         abstract = True
         permissions = (("developer", "Developer"),)
-        unique_together = ("key_group", "key", "site", "channel", "article")
+        unique_together = ("key_group", "key", "site", "channel", "container")
 
     def __unicode__(self):
         return u"{0}-{1}".format(self.key, self.value)

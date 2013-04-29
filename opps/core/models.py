@@ -5,10 +5,12 @@ from django.db import models
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ValidationError
-
 from django.contrib.sites.models import Site
 from django.contrib.redirects.models import Redirect
 from django.utils import timezone
+
+from googl.short import GooglUrlShort
+from taggit.managers import TaggableManager
 
 
 class Date(models.Model):
@@ -147,18 +149,39 @@ class Container(Publishable, Slugged, Imaged):
         'sources.Source',
         null=True, blank=True,
         through='sources.ContainerSource',
-        related_name="%(app_label)s_%(class)s_container_sources",
     )
+    short_url = models.URLField(
+        _("Short URL"),
+        null=True, blank=False,
+    )
+    tags = TaggableManager(blank=True)
 
     class Meta:
         ordering = ['-date_available']
         unique_together = ("site", "channel")
 
+    def __unicode__(self):
+        return self.get_absolute_url()
+
     def save(self, *args, **kwargs):
         self.channel_name = self.channel.name
         self.channel_long_slug = self.channel.long_slug
         self.child_class = self.__class__.__name__
+        if not self.short_url:
+            self.short_url = GooglUrlShort(self.get_http_absolute_url())\
+                .short()
         super(Container, self).save(*args, **kwargs)
+
+    def recommendation(self):
+        return [a for a in Container.objects.filter(
+            tags__in=self.tags.all()).exclude(pk=self.pk)[:10]]
+
+    def get_absolute_url(self):
+        return "/{0}/{1}".format(self.channel.long_slug, self.slug)
+
+    def get_http_absolute_url(self):
+        return "http://{0}/{1}".format(self.channel, self.slug)
+    get_http_absolute_url.short_description = 'URL'
 
     @property
     def search_category(self):

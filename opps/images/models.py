@@ -10,7 +10,7 @@ from django.utils import timezone
 from taggit.models import TaggedItemBase
 from taggit.managers import TaggableManager
 
-from opps.core.models import Publishable
+from opps.core.models import Publishable, ContainerThrough, Slugged
 
 
 def get_file_path(instance, filename):
@@ -27,11 +27,9 @@ class TaggedImage(TaggedItemBase):
     pass
 
 
-class Image(Publishable):
+class Image(Publishable, Slugged):
 
     title = models.CharField(_(u"Title"), max_length=140, db_index=True)
-    slug = models.SlugField(_(u"Slug"), max_length=150, blank=True,
-                            db_index=True)
     image = models.ImageField(upload_to=get_file_path)
     description = models.TextField(_(u"Description"), null=True, blank=True)
     tags = TaggableManager(blank=True, through=TaggedImage)
@@ -45,3 +43,15 @@ class Image(Publishable):
         if self.date_available <= timezone.now() and self.published:
             return self.image.url
         return u""
+
+
+class ContainerImage(ContainerThrough):
+    image = models.ForeignKey(
+        'images.Image',
+        verbose_name=_(u'Image'),
+        null=True, blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    def __unicode__(self):
+        return self.image.title

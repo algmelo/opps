@@ -5,9 +5,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.contrib.redirects.models import Redirect
 
-from taggit.managers import TaggableManager
-from googl.short import GooglUrlShort
-
 from opps.core.models import BaseConfig
 from opps.core.models import Container
 
@@ -20,33 +17,9 @@ class Article(Container):
         max_length=140,
         null=True, blank=False,
     )
-    short_url = models.URLField(
-        _("Short URL"),
-        null=True, blank=False,
-    )
-    tags = TaggableManager(blank=True)
 
     class Meta:
         abstract = True
-
-    def __unicode__(self):
-        return self.get_absolute_url()
-
-    def save(self, *args, **kwargs):
-        if not self.short_url:
-            self.short_url = GooglUrlShort(self.get_http_absolute_url())\
-                .short()
-
-    def get_absolute_url(self):
-        return "/{0}/{1}".format(self.channel.long_slug, self.slug)
-
-    def get_http_absolute_url(self):
-        return "http://{0}/{1}".format(self.channel, self.slug)
-    get_http_absolute_url.short_description = 'URL'
-
-    def recommendation(self):
-        return [a for a in Article.objects.filter(
-            tags__in=self.tags.all()).exclude(pk=self.pk)[:10]]
 
 
 class Post(Article):

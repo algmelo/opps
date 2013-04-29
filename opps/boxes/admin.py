@@ -30,14 +30,14 @@ class DynamicBoxAdmin(PublishableAdmin):
     list_display = ['name', 'date_available', 'published']
     list_filter = ['date_available', 'published']
     exclude = ('user',)
-    raw_id_fields = ['channel', 'article', 'dynamicqueryset']
+    raw_id_fields = ['channel', 'container', 'dynamicqueryset']
     search_fields = ['name', 'slug']
 
     fieldsets = (
         (_(u'Identification'), {
             'fields': ('site', 'name', 'slug')}),
         (_(u'Relationships'), {
-            'fields': ('channel', 'article', 'dynamicqueryset')}),
+            'fields': ('channel', 'container', 'dynamicqueryset')}),
         (_(u'Publication'), {
             'classes': ('extrapretty'),
             'fields': ('published', 'date_available')}),
@@ -59,7 +59,7 @@ class ContainerBoxAdmin(PublishableAdmin):
     prepopulated_fields = {"slug": ["name"]}
     list_display = ['name', 'date_available', 'published']
     list_filter = ['date_available', 'published']
-    inlines = [ContainerBoxContainers]
+    inlines = [ContainerBoxContainersInline]
     raw_id_fields = ['channel', 'container', 'queryset']
     search_fields = ['name', 'slug']
 

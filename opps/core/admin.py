@@ -7,6 +7,10 @@ from django.contrib.sites.models import Site
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
 
+from django_thumbor import generate_url
+
+from .models import Container
+
 
 class PublishableAdmin(admin.ModelAdmin):
     """
@@ -66,3 +70,27 @@ def apply_rules(admin_class, rules):
     # apply raw_id_fields
 
     return admin_class
+
+
+class HideContainerAdmin(PublishableAdmin):
+
+    list_display = ['image_thumb', 'title', 'channel_name', 'date_available',
+                    'published']
+    readonly_fields = ['image_thumb']
+
+    def image_thumb(self, obj):
+        if obj.main_image:
+            return u'<img width="60px" height="60px" src="{0}" />'.format(
+                generate_url(obj.main_image.image.url, width=60, height=60))
+        return _(u'No Image')
+    image_thumb.short_description = _(u'Thumbnail')
+    image_thumb.allow_tags = True
+
+    def get_model_perms(self, *args, **kwargs):
+        return {}
+
+    def has_add_permission(self, request):
+        return False
+
+
+admin.site.register(Container, HideContainerAdmin)

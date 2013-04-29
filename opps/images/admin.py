@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 from django_thumbor import generate_url
 
-from .models import Image
+from .models import Image, ContainerImage
 from .forms import ImageModelForm
 from opps.core.admin import PublishableAdmin
 
@@ -50,5 +50,15 @@ class ImagesAdmin(PublishableAdmin):
         return _(u'No Image')
     image_thumb.short_description = _(u'Thumbnail')
     image_thumb.allow_tags = True
+
+
+class ContainerImageInline(admin.TabularInline):
+    model = ContainerImage
+    fk_name = 'container'
+    raw_id_fields = ['image']
+    actions = None
+    extra = 1
+    fieldsets = [(None, {'fields': ('image', 'order')})]
+
 
 admin.site.register(Image, ImagesAdmin)

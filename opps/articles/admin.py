@@ -3,32 +3,12 @@ from django.contrib import admin
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 
-from .models import Post, Album, Article, Link, ArticleSource, ArticleImage
-from .models import ArticleConfig
+from .models import Post, Album, Link, ArticleConfig
 from opps.core.admin import PublishableAdmin
+from opps.images.admin import ContainerImageInline
+from opps.sources.admin import ContainerSourceInline
 
 from redactor.widgets import RedactorEditor
-from django_thumbor import generate_url
-
-
-class ArticleImageInline(admin.TabularInline):
-    model = ArticleImage
-    fk_name = 'article'
-    raw_id_fields = ['image']
-    actions = None
-    extra = 1
-    fieldsets = [(None, {'fields': ('image', 'order')})]
-
-
-class ArticleSourceInline(admin.TabularInline):
-    model = ArticleSource
-    fk_name = 'article'
-    raw_id_fields = ['source']
-    actions = None
-    extra = 1
-    fieldsets = [(None, {
-        'classes': ('collapse',),
-        'fields': ('source', 'order')})]
 
 
 class PostAdminForm(forms.ModelForm):
@@ -45,7 +25,7 @@ class ArticleAdmin(PublishableAdmin):
 
 class PostAdmin(ArticleAdmin):
     form = PostAdminForm
-    inlines = [ArticleImageInline, ArticleSourceInline]
+    inlines = [ContainerImageInline, ContainerSourceInline]
     raw_id_fields = ['main_image', 'channel', 'albums']
 
     fieldsets = (
@@ -70,7 +50,7 @@ class AlbumAdminForm(forms.ModelForm):
 
 class AlbumAdmin(ArticleAdmin):
     form = AlbumAdminForm
-    inlines = [ArticleImageInline]
+    inlines = [ContainerImageInline]
 
     fieldsets = (
         (_(u'Identification'), {
@@ -87,13 +67,13 @@ class AlbumAdmin(ArticleAdmin):
 
 
 class LinkAdmin(ArticleAdmin):
-    raw_id_fields = ['articles', 'channel', 'main_image']
+    raw_id_fields = ['containers', 'channel', 'main_image']
     fieldsets = (
         (_(u'Identification'), {
             'fields': ('title', 'slug', 'get_http_absolute_url',
                        'short_url',)}),
         (_(u'Content'), {
-            'fields': ('short_title', 'headline', 'url', 'articles',
+            'fields': ('short_title', 'headline', 'url', 'containers',
                        'main_image', 'tags')}),
         (_(u'Relationships'), {
             'fields': ('channel',)}),
@@ -103,27 +83,6 @@ class LinkAdmin(ArticleAdmin):
     )
 
 
-class HideArticleAdmin(PublishableAdmin):
-
-    list_display = ['image_thumb', 'title', 'channel_name', 'date_available',
-                    'published']
-    readonly_fields = ['image_thumb']
-
-    def image_thumb(self, obj):
-        if obj.main_image:
-            return u'<img width="60px" height="60px" src="{0}" />'.format(
-                generate_url(obj.main_image.image.url, width=60, height=60))
-        return _(u'No Image')
-    image_thumb.short_description = _(u'Thumbnail')
-    image_thumb.allow_tags = True
-
-    def get_model_perms(self, *args, **kwargs):
-        return {}
-
-    def has_add_permission(self, request):
-        return False
-
-
 class ArticleConfigAdmin(PublishableAdmin):
     list_display = ['key', 'key_group', 'channel', 'date_insert',
                     'date_available', 'published']
@@ -131,7 +90,6 @@ class ArticleConfigAdmin(PublishableAdmin):
     search_fields = ["key", "key_group", "value"]
 
 
-admin.site.register(Article, HideArticleAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Album, AlbumAdmin)
 admin.site.register(Link, LinkAdmin)

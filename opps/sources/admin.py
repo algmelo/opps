@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from .models import Source
+from .models import Source, ContainerSource
 from opps.core.admin import PublishableAdmin
 
 
@@ -22,6 +22,17 @@ class SourceAdmin(PublishableAdmin):
             'classes': ('extrapretty'),
             'fields': ('published', 'date_available')}),
     )
+
+
+class ContainerSourceInline(admin.TabularInline):
+    model = ContainerSource
+    fk_name = 'container'
+    raw_id_fields = ['source']
+    actions = None
+    extra = 1
+    fieldsets = [(None, {
+        'classes': ('collapse',),
+        'fields': ('source', 'order')})]
 
 
 admin.site.register(Source, SourceAdmin)

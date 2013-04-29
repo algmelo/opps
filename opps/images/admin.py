@@ -37,7 +37,7 @@ class ImagesAdmin(PublishableAdmin):
                 site=get_current_site(request),
                 image=img,
                 title=obj.title,
-                slug="{0}-{1}".format(obj.slug, i),
+                slug=u"{0}-{1}".format(obj.slug, i),
                 description=obj.description,
                 published=obj.published,
                 user=get_user_model().objects.get(pk=request.user.pk))

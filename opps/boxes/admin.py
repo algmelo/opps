@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from .models import QuerySet, DynamicBox
+from .models import QuerySet, DynamicBox, ContainerBox, ContainerBoxContainers
 from opps.core.admin import PublishableAdmin
 
 
@@ -44,5 +44,36 @@ class DynamicBoxAdmin(PublishableAdmin):
     )
 
 
+class ContainerBoxContainersInline(admin.TabularInline):
+    model = ContainerBoxContainers
+    fk_name = 'containerbox'
+    raw_id_fields = ['container']
+    actions = None
+    extra = 1
+    fieldsets = [(None, {
+        'classes': ('collapse',),
+        'fields': ('container', 'order')})]
+
+
+class ContainerBoxAdmin(PublishableAdmin):
+    prepopulated_fields = {"slug": ["name"]}
+    list_display = ['name', 'date_available', 'published']
+    list_filter = ['date_available', 'published']
+    inlines = [ContainerBoxContainers]
+    raw_id_fields = ['channel', 'container', 'queryset']
+    search_fields = ['name', 'slug']
+
+    fieldsets = (
+        (_(u'Identification'), {
+            'fields': ('site', 'name', 'slug')}),
+        (_(u'Relationships'), {
+            'fields': ('channel', 'container', 'queryset')}),
+        (_(u'Publication'), {
+            'classes': ('extrapretty'),
+            'fields': ('published', 'date_available')}),
+    )
+
+
 admin.site.register(QuerySet, QuerySetAdmin)
 admin.site.register(DynamicBox, DynamicBoxAdmin)
+admin.site.register(ContainerBox, ContainerBoxAdmin)

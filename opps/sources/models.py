@@ -21,6 +21,7 @@ class ContainerSource(ContainerThrough):
         'sources.Source',
         null=True, blank=True,
         on_delete=models.SET_NULL,
+        related_name="%(app_label)s_%(class)s_containersource_source",
         verbose_name=_(u'Source'),
     )
 

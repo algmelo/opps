@@ -22,9 +22,9 @@ class DynamicSiteMiddleware(object):
         if domain in settings.OPPS_DEFAULT_URLS:
             domain = 'example.com'
         try:
-            return Site.object.get(domain=domain)
+            return Site.objects.get(domain=domain)
         except Site.DoesNotExist:
-            return Site.object.all()[0]
+            return Site.objects.all()[0]
 
     def process_request(self, request):
         hosting = request.get_host().lower()

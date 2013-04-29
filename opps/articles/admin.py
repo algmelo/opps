@@ -4,7 +4,7 @@ from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from .models import Post, Album, Article, Link, ArticleSource, ArticleImage
-from .models import ArticleBox, ArticleBoxArticles, ArticleConfig
+from .models import ArticleConfig
 from opps.core.admin import PublishableAdmin
 
 from redactor.widgets import RedactorEditor
@@ -29,17 +29,6 @@ class ArticleSourceInline(admin.TabularInline):
     fieldsets = [(None, {
         'classes': ('collapse',),
         'fields': ('source', 'order')})]
-
-
-class ArticleBoxArticlesInline(admin.TabularInline):
-    model = ArticleBoxArticles
-    fk_name = 'articlebox'
-    raw_id_fields = ['article']
-    actions = None
-    extra = 1
-    fieldsets = [(None, {
-        'classes': ('collapse',),
-        'fields': ('article', 'order')})]
 
 
 class PostAdminForm(forms.ModelForm):
@@ -114,25 +103,6 @@ class LinkAdmin(ArticleAdmin):
     )
 
 
-class ArticleBoxAdmin(PublishableAdmin):
-    prepopulated_fields = {"slug": ["name"]}
-    list_display = ['name', 'date_available', 'published']
-    list_filter = ['date_available', 'published']
-    inlines = [ArticleBoxArticlesInline]
-    raw_id_fields = ['channel', 'article', 'queryset']
-    search_fields = ['name', 'slug']
-
-    fieldsets = (
-        (_(u'Identification'), {
-            'fields': ('site', 'name', 'slug')}),
-        (_(u'Relationships'), {
-            'fields': ('channel', 'article', 'queryset')}),
-        (_(u'Publication'), {
-            'classes': ('extrapretty'),
-            'fields': ('published', 'date_available')}),
-    )
-
-
 class HideArticleAdmin(PublishableAdmin):
 
     list_display = ['image_thumb', 'title', 'channel_name', 'date_available',
@@ -165,5 +135,4 @@ admin.site.register(Article, HideArticleAdmin)
 admin.site.register(Post, PostAdmin)
 admin.site.register(Album, AlbumAdmin)
 admin.site.register(Link, LinkAdmin)
-admin.site.register(ArticleBox, ArticleBoxAdmin)
 admin.site.register(ArticleConfig, ArticleConfigAdmin)

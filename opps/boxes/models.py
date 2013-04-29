@@ -4,8 +4,10 @@
 #from django.utils.importlib import import_module
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
-from opps.core.models import Publishable, BaseBox
+from opps.core.models import Publishable, Slugged, ContainerThrough
 
 
 try:
@@ -36,9 +38,80 @@ class QuerySet(Publishable):
     )
 
 
+class BaseBox(Publishable, Slugged):
+    name = models.CharField(_(u"Box name"), max_length=140)
+    container = models.ForeignKey(
+        'core.Container',
+        null=True, blank=True,
+        help_text=_(u'Only published container'),
+        on_delete=models.SET_NULL
+    )
+    channel = models.ForeignKey(
+        'channels.Channel',
+        null=True, blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        abstract = True
+
+    def __unicode__(self):
+        return u"{0}-{1}".format(self.slug, self.site.name)
+
+
+class ContainerBox(BaseBox):
+
+    containers = models.ManyToManyField(
+        'core.Container',
+        null=True, blank=True,
+        related_name='containerbox_containers',
+        through='boxes.ContainerBoxContainers'
+    )
+    queryset = models.ForeignKey(
+        'boxes.QuerySet',
+        null=True, blank=True,
+        verbose_name=_(u'Query Set')
+    )
+
+    def get_queryset(self):
+        _app, _model = self.queryset.model.split('.')
+        model = models.get_model(_app, _model)
+
+        queryset = model.objects.filter(published=True,
+                                        date_available__lte=timezone.now())
+        if self.queryset.channel:
+            queryset = queryset.filter(channel=self.queryset.channel)
+        queryset = queryset.order_by('{0}id'.format(self.queryset.order))[
+            :self.queryset.limit]
+
+        return queryset
+
+
 class DynamicBox(BaseBox):
 
     dynamicqueryset = models.ForeignKey(
         'boxes.QuerySet',
         verbose_name=_(u'Query Set')
     )
+
+
+class ContainerBoxContainers(ContainerThrough):
+    containerbox = models.ForeignKey(
+        'boxes.ContainerBox',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='containerboxcontainers_containerboxs',
+        verbose_name=_(u'Container Box'),
+    )
+
+    def __unicode__(self):
+        return u"{0}-{1}".format(self.containerbox.slug, self.container.slug)
+
+    def clean(self):
+
+        if not self.container.published:
+            raise ValidationError(_(u'Container not published!'))
+
+        if self.container.date_available >= timezone.now():
+            raise ValidationError(_(u'Container date available is greater '
+                                    u'than today!'))

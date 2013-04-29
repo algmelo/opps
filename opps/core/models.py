@@ -97,12 +97,13 @@ class Imaged(models.Model):
         'images.Image',
         null=True, blank=False,
         on_delete=models.SET_NULL,
+        related_name="%(app_label)s_%(class)s_mainimage",
         verbose_name=_(u'Main Image'),
     )
     images = models.ManyToManyField(
         'images.Image',
         null=True, blank=True,
-        through='core.ContainerImage',
+        through='images.ContainerImage',
     )
 
     class Meta:
@@ -118,7 +119,7 @@ class Imaged(models.Model):
         return self.main_image
 
 
-class Container(Publishable, Slugged):
+class Container(Publishable, Slugged, Imaged):
     title = models.CharField(_(u"Title"), max_length=140, db_index=True)
     channel = models.ForeignKey(
         'channels.Channel',
@@ -141,6 +142,12 @@ class Container(Publishable, Slugged):
         max_length=30,
         null=True, blank=False,
         db_index=True
+    )
+    sources = models.ManyToManyField(
+        'sources.Source',
+        null=True, blank=True,
+        through='sources.ContainerSource',
+        related_name="%(app_label)s_%(class)s_container_sources",
     )
 
     class Meta:

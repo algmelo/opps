@@ -9,12 +9,10 @@ from taggit.managers import TaggableManager
 from googl.short import GooglUrlShort
 
 from opps.core.models import BaseConfig
-from opps.core.models import Imaged, Container
+from opps.core.models import Container
 
 
-class Article(Imaged):
-
-    __metaclass__ = Container
+class Article(Container):
 
     headline = models.TextField(_(u"Headline"), null=True, blank=True)
     short_title = models.CharField(
@@ -25,11 +23,6 @@ class Article(Imaged):
     short_url = models.URLField(
         _("Short URL"),
         null=True, blank=False,
-    )
-    sources = models.ManyToManyField(
-        'sources.Source',
-        null=True, blank=True,
-        through='articles.ArticleSource',
     )
     tags = TaggableManager(blank=True)
 
@@ -86,10 +79,10 @@ class Album(Article):
 
 class Link(Article):
     url = models.URLField(_(u"URL"), null=True, blank=True)
-    articles = models.ForeignKey(
-        'articles.Article',
+    containers = models.ForeignKey(
+        'core.Container',
         null=True, blank=True,
-        related_name='link_article'
+        related_name='link_container'
     )
 
     def get_absolute_url(self):
@@ -101,11 +94,11 @@ class Link(Article):
         return "{0}{1}/link{2}".format(protocol, self.site, path)
 
     def clean(self):
-        if not self.url and not self.articles:
+        if not self.url and not self.containers:
             raise ValidationError(_('URL field is required.'))
 
-        if self.articles:
-            self.url = self.articles.get_http_absolute_url()
+        if self.containers:
+            self.url = self.containers.get_http_absolute_url()
 
     def save(self, *args, **kwargs):
         obj, create = Redirect.objects.get_or_create(
